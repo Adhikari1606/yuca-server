@@ -14,14 +14,26 @@ const transporter = nodemailer.createTransport({
   host: 'smtp.gmail.com',
   port: 587,
   secure: false,
+  pool: true,
+  maxConnections: 1,
+  maxMessages: 200,
   auth: {
-    user: process.env.GMAIL_USER,
-    pass: process.env.GMAIL_APP_PASSWORD,
+    user: gmailUser,
+    pass: gmailAppPassword,
   },
   connectionTimeout: 15000,
   greetingTimeout: 15000,
   socketTimeout: 20000,
 });
+
+const initializeMailer = async () => {
+  try {
+    await transporter.verify();
+    console.log('SMTP mailer ready');
+  } catch (error) {
+    console.warn('SMTP mailer initialization failed:', error.message);
+  }
+};
 
 const categoryLabel = {
   'feature-film': 'Feature film',
@@ -113,6 +125,7 @@ const sendContactThankYou = async (data) => {
 };
 
 module.exports = {
+  initializeMailer,
   sendNominationNotification,
   sendThankYouEmail,
   sendContactNotification,

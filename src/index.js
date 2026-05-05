@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const adminRoutes = require('./routes/admin');
 const contactRoutes = require('./routes/contact');
 const nominationRoutes = require('./routes/nomination');
+const { initializeMailer } = require('./utils/mailer');
 
 dotenv.config();
 
@@ -51,6 +52,8 @@ const startServer = async () => {
 
     await mongoose.connect(process.env.MONGODB_URI);
     console.log('MongoDB connected');
+
+    await initializeMailer();
 
     app.listen(port, () => {
       console.log(`Server running on port ${port}`);

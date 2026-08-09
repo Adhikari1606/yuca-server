@@ -5,6 +5,7 @@ const dotenv = require('dotenv');
 const adminRoutes = require('./routes/admin');
 const contactRoutes = require('./routes/contact');
 const nominationRoutes = require('./routes/nomination');
+const votingRoutes = require('./routes/voting');
 const { initializeMailer } = require('./utils/mailer');
 
 dotenv.config();
@@ -15,7 +16,7 @@ const clientUrl = process.env.CLIENT_URL;
 
 app.use(
   cors({
-    origin: clientUrl,
+    origin: [clientUrl, "http://localhost:8081"],
   })
 );
 app.use(express.json());
@@ -27,6 +28,7 @@ app.get('/health', (_req, res) => {
 app.use('/api/admin', adminRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/nomination', nominationRoutes);
+app.use('/api/voting', votingRoutes);
 
 app.use((error, _req, res, _next) => {
   console.error(error);

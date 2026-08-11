@@ -15,6 +15,14 @@ const voteSchema = new mongoose.Schema(
       unique: true,
       index: true,
     },
+    phone: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true,
+      sparse: true,
+      index: true,
+    },
     ip: {
       type: String,
       trim: true,

@@ -17,28 +17,23 @@ const requireAdminToken = (req, res, next) => {
   return next();
 };
 
-// Check voting eligibility by Email or IP
+// Check voting eligibility by Email or Phone Number
 router.post('/check-eligibility', async (req, res) => {
   try {
-    const { email, ip } = req.body;
+    const { email, phone } = req.body;
     const emailTrimmed = (email || '').trim().toLowerCase();
+    const phoneTrimmed = (phone || '').trim();
 
-    if (emailTrimmed) {
-      const existingEmail = await Vote.findOne({ email: emailTrimmed });
-      if (existingEmail) {
+    if (emailTrimmed || phoneTrimmed) {
+      const conditions = [];
+      if (emailTrimmed) conditions.push({ email: emailTrimmed });
+      if (phoneTrimmed) conditions.push({ phone: phoneTrimmed });
+
+      const existingVote = await Vote.findOne({ $or: conditions });
+      if (existingVote) {
         return res.json({
           allowed: false,
-          message: `You already voted with email "${emailTrimmed}".`,
-        });
-      }
-    }
-
-    if (ip) {
-      const existingIp = await Vote.findOne({ ip });
-      if (existingIp) {
-        return res.json({
-          allowed: false,
-          message: `You already voted from network IP (${ip}).`,
+          message: 'You have already submitted a vote with this email address or phone number.',
         });
       }
     }
@@ -52,31 +47,30 @@ router.post('/check-eligibility', async (req, res) => {
 // Submit vote
 router.post('/', async (req, res) => {
   try {
-    const { fullName, email, ip, votes } = req.body;
+    const { fullName, email, phone, ip, votes } = req.body;
 
-    if (!fullName || !email || !votes || !Array.isArray(votes) || votes.length === 0) {
-      return res.status(400).json({ message: 'Please fill all required fields and cast votes.' });
+    if (!fullName || !email || !phone || !votes || !Array.isArray(votes) || votes.length === 0) {
+      return res.status(400).json({ message: 'Please fill all required fields (Full Name, Email, Phone) and cast votes.' });
     }
 
     const emailTrimmed = email.trim().toLowerCase();
+    const phoneTrimmed = phone.trim();
 
-    // Check if email already voted in DB
-    const existingVoteByEmail = await Vote.findOne({ email: emailTrimmed });
-    if (existingVoteByEmail) {
-      return res.status(400).json({ message: `You already voted with email "${emailTrimmed}".` });
-    }
+    // Independently check if email or phone number has already been used to vote
+    const existingEmailVote = await Vote.findOne({ email: emailTrimmed });
+    const existingPhoneVote = await Vote.findOne({ phone: phoneTrimmed });
 
-    // Check if IP already voted in DB
-    if (ip) {
-      const existingVoteByIp = await Vote.findOne({ ip });
-      if (existingVoteByIp) {
-        return res.status(400).json({ message: `You already voted from network IP (${ip}).` });
-      }
+    if (existingEmailVote || existingPhoneVote) {
+      return res.status(400).json({
+        alreadySubmitted: true,
+        message: 'YOU ALREADY VOTED, THANKS FOR VOTING',
+      });
     }
 
     const newVote = await Vote.create({
       fullName: fullName.trim(),
       email: emailTrimmed,
+      phone: phoneTrimmed,
       ip: ip ? ip.trim() : '',
       votes,
     });
@@ -89,7 +83,8 @@ router.post('/', async (req, res) => {
   } catch (error) {
     if (error.code === 11000) {
       return res.status(400).json({
-        message: 'You already voted from this email address or network IP.',
+        alreadySubmitted: true,
+        message: 'YOU ALREADY VOTED, THANKS FOR VOTING',
       });
     }
     console.error('Voting submission failed:', error);
@@ -107,6 +102,7 @@ router.get('/export', requireAdminToken, async (_req, res) => {
         'S. No.': index + 1,
         'Full Name': v.fullName,
         Email: v.email,
+        'Phone Number': v.phone || '',
         'IP Address': v.ip || '',
         'Submitted At': v.createdAt ? new Date(v.createdAt).toLocaleString() : '',
       };
